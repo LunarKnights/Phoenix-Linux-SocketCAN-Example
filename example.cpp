@@ -4,79 +4,53 @@
 #include <chrono>
 #include <thread>
 #include "Platform-linux-socket-can.h"
-#include <SDL2/SDL.h>
-
+#include <math.h>
+#include <ros/ros.h>
 // SDL code from https://gist.github.com/fabiocolacio/423169234b8daf876d8eb75d8a5f2e95
 
 using namespace ctre::phoenix;
 using namespace ctre::phoenix::platform;
 using namespace ctre::phoenix::motorcontrol;
 using namespace ctre::phoenix::motorcontrol::can;
-
+int kTimeoutMs = 30;
+int programCounter = 0;
 int main() {
 
-    std::cout << "Please input the name of your can interface: ";
-    
-    std::string interface;
-
-    std::cin >> interface;
-
-    ctre::phoenix::platform::can::SetCANInterface(interface.c_str());
-
+    ctre::phoenix::platform::can::SetCANInterface("can0");
+    //ctre::phoenix::
     TalonSRX * talon = new TalonSRX(1);
-    
-    // Initialize the joystick subsystem
-    SDL_Init(SDL_INIT_JOYSTICK);
 
-    // If there are no joysticks connected, quit the program
-    if (SDL_NumJoysticks() <= 0) {
-        printf("There are no joysticks connected. Quitting now...\n");
-        SDL_Quit();
-        return -1;
-    }
-   
-    // Open the joystick for reading and store its handle in the joy variable
-    SDL_Joystick *joy = SDL_JoystickOpen(0);
- 
-    // If the joy variable is NULL, there was an error opening it.
-    if (joy != NULL) {
-        // Get information about the joystick
-        const char *name = SDL_JoystickName(joy);
-        const int num_axes = SDL_JoystickNumAxes(joy);
-        const int num_buttons = SDL_JoystickNumButtons(joy);
-        const int num_hats = SDL_JoystickNumHats(joy);
+    talon->ConfigSelectedFeedbackSensor(FeedbackDevice::CTRE_MagEncoder_Relative,0,kTimeoutMs);
+    talon->SetSensorPhase(true);
 
-        printf("Now reading from joystick '%s' with:\n"
-               "%d axes\n"
-               "%d buttons\n"
-               "%d hats\n\n",
-               name,
-               num_axes,
-               num_buttons,
-               num_hats);
+    talon->ConfigNominalOutputForward(0,kTimeoutMs);
+    talon->ConfigNominalOutputReverse(0,kTimeoutMs);
 
-        int quit = 0;
+    talon->ConfigPeakOutputForward(1,kTimeoutMs);
+    talon->ConfigPeakOutputReverse(-1,kTimeoutMs);
 
-        // Keep reading the state of the joystick in a loop
-        while (quit == 0) {
-            if (SDL_QuitRequested()) {
-                quit = 1;
-            }
-           
-            if(SDL_JoystickGetButton(joy, 4)) {
-                ctre::phoenix::platform::FeedWatchDog(100);
-            }            
- 
-            talon->Set(ControlMode::PercentOutput, ((double) SDL_JoystickGetAxis(joy, 1)) / 32767.0);
-               
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
-        }
-        SDL_JoystickClose(joy);
-    } else {
-        printf("Couldn't open the joystick. Quitting now...\n");
-    }
+    talon->Config_kF(0,0.1097,kTimeoutMs);
+    talon->Config_kP(0,.22,kTimeoutMs);
+    talon->Config_kI(0,0,kTimeoutMs);
+    talon->Config_kD(0,0,kTimeoutMs);
 
-    SDL_Quit();
+
+    talon->SetStatusFramePeriod(StatusFrame::Status_1_General_,5,kTimeoutMs);
+    double theta = 0;
+while(1){
+     if(programCounter++%10==0){
+         //std::cout << "T: " << talon->GetTemperature() << std::endl;
+         std::cout << "T: " << talon->GetClosedLoopTarget()<<" A: "<< talon->GetSelectedSensorVelocity()<<" E: "<<talon->GetClosedLoopError() <<std::endl;
+     }
+    ctre::phoenix::platform::FeedWatchDog(100);
+    //talon->Set(ControlMode::PercentOutput, 0.1f);
+    theta++;
+    double targetVelocity_UnitsPer100ms = sin(theta/20) * 132 * 4096 / 600;
+    talon->Set(ControlMode::Velocity,targetVelocity_UnitsPer100ms);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+}
     return 0;
 }
 
