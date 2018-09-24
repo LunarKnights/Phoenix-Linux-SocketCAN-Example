@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include "ctre/phoenix/LowLevel/CANBusAddressable.h"
+#include "ctre/phoenix/CANBusAddressable.h"
 #include "ctre/phoenix/CustomParamConfiguration.h"
 #include "ctre/phoenix/ErrorCode.h"
 #include "ctre/phoenix/paramEnum.h"
@@ -33,6 +33,11 @@ struct CANifierConfiguration : CustomParamConfiguration{
         clearPositionOnQuadIdx(false)
     {
 	}
+
+	std::string toString() {
+		return toString("");
+	}
+
     std::string toString(std::string prependString) {
 
         std::string retstr = prependString + ".velocityMeasurementPeriod = " + CANifierVelocityMeasPeriodRoutines::toString(velocityMeasurementPeriod) + ";\n";
@@ -47,6 +52,19 @@ struct CANifierConfiguration : CustomParamConfiguration{
     }
 
 };// struct CANifierConfiguration
+
+struct CANifierConfigUtils {
+private:
+	static CANifierConfiguration _default;
+public:
+	static bool VelocityMeasurementPeriodDifferent (const CANifierConfiguration & settings) { return (!(settings.velocityMeasurementPeriod == _default.velocityMeasurementPeriod)) || !settings.enableOptimizations; }
+	static bool VelocityMeasurementWindowDifferent (const CANifierConfiguration & settings) { return (!(settings.velocityMeasurementWindow == _default.velocityMeasurementWindow)) || !settings.enableOptimizations; }
+	static bool ClearPositionOnLimitFDifferent (const CANifierConfiguration & settings) { return (!(settings.clearPositionOnLimitF == _default.clearPositionOnLimitF)) || !settings.enableOptimizations; }
+	static bool ClearPositionOnLimitRDifferent (const CANifierConfiguration & settings) { return (!(settings.clearPositionOnLimitR == _default.clearPositionOnLimitR)) || !settings.enableOptimizations; }
+	static bool ClearPositionOnQuadIdxDifferent (const CANifierConfiguration & settings) { return (!(settings.clearPositionOnQuadIdx == _default.clearPositionOnQuadIdx)) || !settings.enableOptimizations; }
+	static bool CustomParam0Different (const CANifierConfiguration & settings) { return (!(settings.customParam0 == _default.customParam0)) || !settings.enableOptimizations; }
+	static bool CustomParam1Different (const CANifierConfiguration & settings) { return (!(settings.customParam1 == _default.customParam1)) || !settings.enableOptimizations; }
+};
 
 
 class CANifier: public CANBusAddressable {
@@ -101,7 +119,12 @@ public:
 	};
 
 	CANifier(int deviceNumber);
-	ErrorCode SetLEDOutput(double percentOutput, LEDChannel ledChannel);
+    
+    ~CANifier();
+
+    static void DestroyAllCANifiers();
+	
+    ErrorCode SetLEDOutput(double percentOutput, LEDChannel ledChannel);
 	ErrorCode SetGeneralOutput(GeneralPin outputPin, bool outputValue, bool outputEnable);
 	ErrorCode SetGeneralOutputs(int outputBits, int isOutputBits);
 	ErrorCode GetGeneralInputs(PinValues &allPins);
@@ -135,10 +158,14 @@ public:
 	ErrorCode ConfigSetParameter(ParamEnum param, double value,
 			uint8_t subValue, int ordinal, int timeoutMs = 0);
 	double ConfigGetParameter(ParamEnum param, int ordinal, int timeoutMs = 0);
+    
+    ErrorCode ConfigGetParameter(ParamEnum param, int32_t valueToSend,
+            int32_t & valueReceived, uint8_t & subValue, int32_t ordinal,
+            int32_t timeoutMs);
 
 
 	ErrorCode SetStatusFramePeriod(CANifierStatusFrame statusFrame,
-			int periodMs, int timeoutMs = 0);
+			uint8_t periodMs, int timeoutMs = 0);
 	/**
 	 * Gets the period of the given status frame.
 	 *
