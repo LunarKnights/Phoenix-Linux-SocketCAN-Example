@@ -14,10 +14,11 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 find_package (Threads REQUIRED)
-find_package(SDL2 REQUIRED)
+find_package (catkin REQUIRED COMPONENTS roscpp)
 
 # The following folder will be included
 include_directories("${PROJECT_SOURCE_DIR}/include")
+include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_executable(example ${PROJECT_SOURCE_DIR}/example.cpp)
 
@@ -26,5 +27,4 @@ add_executable(example ${PROJECT_SOURCE_DIR}/example.cpp)
     target_link_libraries(example ${CMAKE_SOURCE_DIR}/lib/aarch64/libCTRE_PhoenixPlatform_socketcan.a)
     target_link_libraries(example ${CMAKE_SOURCE_DIR}/lib/aarch64/libCTRE_PhoenixCanutils.a)
 
-target_link_libraries(example Threads::Threads)
-target_link_libraries(example ${SDL2_LIBRARIES})
+target_link_libraries(example Threads::Threads ${catkin_LIBRARIES})
